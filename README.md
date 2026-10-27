@@ -4,6 +4,8 @@ A terminal rendering backend (Text-Based UI) that allows running Pragtical
 inside your terminal with its familiar editing commands, menus, settings and
 plugins. It supports syntax highlighting, mouse interaction and floating dialogs.
 
+https://github.com/user-attachments/assets/bb3a1ffd-bf7b-4dfa-9f00-ca9851eb7e83
+
 ## Features
 
 - Terminal rendering of documents, split panes, tabs, the treeview and toolbar.
