@@ -76,6 +76,10 @@ function Grid:present(...)
       + style.line_highlight[2]*256 + style.line_highlight[3]
     local view = core.active_view
     state.viewport = {view.position.x/8, view.position.y/16, view.size.x/8, view.size.y/16}
+    if view == core.command_view then
+      local x,y,w,h = view:get_suggestions_bounds()
+      state.suggestions = {x/8,y/16,w/8,h/16}
+    end
     if view == core.command_view and view.floating then
       local x,y,w,h = view:get_floating_bounds()
       state.viewport = {x/8,y/16,w/8,h/16}
@@ -395,9 +399,9 @@ def main():
                     time.sleep(.05)
                 raise AssertionError('capture timed out: ' + name)
 
-            def find(state, label, start_row=0):
+            def find(state, label, start_row=0, end_row=None):
                 columns = state['columns']
-                for row in range(start_row, state['rows']):
+                for row in range(start_row, state['rows'] if end_row is None else end_row):
                     cells = state['cells'][row*columns:(row+1)*columns]
                     for col in range(columns):
                         text = ''.join(cell[0] for cell in cells[col:])
@@ -497,6 +501,25 @@ def main():
                 else:
                     check('space and tab markers survive text drawing',dots > 10 and tabs == 2 and errors == 0)
             capture('03-document-return',resume_fixture=True)
+            for position in ('bottom', 'top'):
+                capture('03-'+position+'-config', commandview_position=position)
+                key('ctrl+p', 'ctrl+a')
+                xdo('type', '--clearmodifiers', 'agent')
+                time.sleep(.3)
+                name='03-'+position+'-query'
+                state=check_preview(name)
+                col,row=find(state,'agent')
+                check(name+' label and query share a row',
+                      find(state,'Open File From Project:')[1] == row)
+                check(name+' caret follows query',state['caret'] == [col+5,row])
+                _,y,_,h=state['suggestions']
+                suggestion_row=find(state,'AGENTS.md',int(y+.5),int(y+h+.5))[1]
+                check(name+' results stay on the configured side',
+                      suggestion_row < row if position == 'bottom' else suggestion_row > row)
+                point(state,col+2,row,click=True)
+                state=capture(name+'-clicked')
+                check(name+' mouse resolves the input row',state['selection'] == [1,3,1,3])
+                key('Escape')
             capture('03-center-config', commandview_position='center')
             key('ctrl+p', 'ctrl+a')
             xdo('type', '--clearmodifiers', 'agent')

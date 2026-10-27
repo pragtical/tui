@@ -74,6 +74,28 @@ function views.install()
   -- CommandView defines its own GUI spacing rather than inheriting DocView's.
   CommandView.get_line_height = DocView.get_line_height
 
+  ---Keep caret and pointer geometry on the input's document row.
+  ---@param line? integer Single-line input always resolves to line one
+  ---@param col? integer
+  ---@return number x
+  ---@return number y
+  function CommandView:get_line_screen_position(line, col)
+    return DocView.get_line_screen_position(self, 1, col)
+  end
+
+  local move_towards = CommandView.move_towards
+  ---Include a divider row in docked height targets without invalidating idle frames.
+  ---@param target table|string
+  ---@param key string|number
+  ---@param destination? number
+  ---@param ... any Remaining animation arguments
+  function CommandView:move_towards(target, key, destination, ...)
+    if target == self.size and key == "y" and destination > 0 and not self.floating then
+      destination = destination + 16
+    end
+    return move_towards(self, target, key, destination, ...)
+  end
+
   local update_floating = CommandView.update_floating
   ---Align centered input and result rows before their nested clipping is applied.
   function CommandView:update_floating()

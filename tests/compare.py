@@ -115,6 +115,10 @@ local function snapshot()
       line_height=view:get_line_height(),range={view:get_visible_line_range()},
       line_position={view:get_line_screen_position(1)}}
   end
+  if view == core.command_view then
+    data.prompt = {label=view.label, text=view:get_text(),
+      line_position={view:get_line_screen_position(1)}}
+  end
   local function widget(item, path)
     if not item.childs or not item:is_visible() then return end
     local entry = {path=path, type=item.type_name, bounds=rect(item)}
@@ -267,7 +271,7 @@ local function scene(name)
   elseif name:match("^commandview") then
     doc()
     config.commandview_position = name == "commandview-scrolled" and "center" or name:gsub("^commandview%-", "")
-    core.command_view:enter("Search:", {text="sample", select_text=false,
+    core.command_view:enter("Search", {text="sample", select_text=false, typeahead=false,
       suggest=function() local rows={} for i=1,30 do
         rows[i]={text="sample result "..i..string.rep(" long text",8), info="line: "..i}
       end return rows end, show_suggestions=true})
@@ -616,6 +620,13 @@ export VALUE="example"
                                         cells=state['cells'][row*state['columns']:(row+1)*state['columns']]
                                         text=''.join(cell[0] for cell in cells[int(left/8+.5):int((left+width)/8+.5)])
                                         check('focused query is visible',state['input']['text'].strip()[:12] in text)
+                                    if 'prompt' in state:
+                                        prompt=state['prompt']
+                                        row=int(prompt['line_position'][1]/16+.5)
+                                        cells=state['cells'][row*state['columns']:(row+1)*state['columns']]
+                                        text=''.join(cell[0] for cell in cells)
+                                        check('prompt label is visible',prompt['label'].strip() in text)
+                                        check('prompt query is visible',prompt['text'] in text)
                                     for index,popup in enumerate(state['popups']):
                                         if popup['name'] != 'ContextMenu': continue
                                         x,y,w,h=popup['bounds']

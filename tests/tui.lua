@@ -484,7 +484,7 @@ test.describe("terminal renderer adapters", function()
   local CommandView = require "core.commandview"
   local RootView = require "core.rootview"
   local ContextMenu = require "core.contextmenu"
-  local on_event, active_view, root_size
+  local on_event, active_view, last_active_view, root_size
   local native_canvas, native_save_image, temp_files, refresh_widgets
   test.before_each(function()
     nerdicons = config.plugins.tui.nerdicons
@@ -496,6 +496,7 @@ test.describe("terminal renderer adapters", function()
     roots, menus = {}, {}
     clip, core.clip_rect_stack = core.clip_rect_stack, {{0, 0, 640, 192}}
     on_event, active_view = core.on_event, core.active_view
+    last_active_view = core.last_active_view
     root_size = {core.root_view.size.x, core.root_view.size.y}
     core.root_view.size.x, core.root_view.size.y = 640, 192
     native_canvas = canvas.new(64, 32, {255, 0, 0, 255}, true)
@@ -526,6 +527,7 @@ test.describe("terminal renderer adapters", function()
     config.transitions = transitions
     core.clip_rect_stack = clip
     core.on_event, core.active_view = on_event, active_view
+    core.last_active_view = last_active_view
     core.root_view.size.x, core.root_view.size.y = table.unpack(root_size)
     style.padding.x, style.padding.y = padding[1], padding[2]
     for _, entry in ipairs(saved) do
@@ -1064,6 +1066,65 @@ test.describe("terminal renderer adapters", function()
     test.not_ok(pcall(popup.draw, popup))
     test.equal(session.grid.layer, 0)
   end)
+
+  for _, position in ipairs({"bottom", "top"}) do
+    test.test(position .. " command inputs keep their text above node dividers", function()
+      local Node = require "core.node"
+      local View = require "core.view"
+      local function leaf(view, height)
+        local node = Node()
+        node.views, node.active_view = {view}, view
+        node.locked = {x = false, y = height ~= nil}
+        if height then view.size.y = height end
+        view._core_step_first_update = true
+        return node
+      end
+      local view = CommandView()
+      view.display_position = position
+      view.label = "Find Command:"
+      view.state = {suggest = function() return {} end, cancel = function() end,
+        show_suggestions = false, typeahead = false}
+      view.doc:insert(1, 1, "agent")
+      view.doc:set_selection(1, 6)
+      local root, body, bars = Node("vsplit"), Node("vsplit"), Node("vsplit")
+      root.a, root.b = leaf(View(), 16), body
+      if position == "bottom" then
+        body.a, body.b = leaf(View()), bars
+        bars.a, bars.b = leaf(view, 0), leaf(View(), 16)
+      else
+        body.a, body.b = leaf(view, 0), bars
+        bars.a, bars.b = leaf(View()), leaf(View(), 16)
+      end
+      core.active_view = view
+      session.grid:resize(80, 12)
+      root.size.x, root.size.y = 640, 176
+      for offset = 0, 15.5, .5 do
+        view:update()
+        root.position.y = offset
+        root:update_layout()
+        renderer.begin_frame()
+        root:draw()
+        local _, y = view:get_line_screen_position(1, 6)
+        local row = math.floor(y / 16 + .5)
+        local context = position .. " input at viewport offset " .. offset
+          .. " (y=" .. view.position.y .. ", scroll=" .. view.scroll.y
+          .. ", height=" .. view.size.y .. ", row=" .. row .. "): " .. row_text(row)
+        test.ok(row_text(row):find(view.label, 1, true), context .. " lost its label")
+        test.ok(row_text(row):find("agent", 1, true), context .. " lost its query")
+        local height = view.size.y
+        local redraw = core.redraw
+        core.redraw = false
+        view:update()
+        local invalidated = core.redraw
+        core.redraw = redraw
+        test.equal(view.size.y, height, context .. " grows on repeated updates")
+        test.not_ok(invalidated, context .. " requests a redraw while idle")
+      end
+      core.active_view = active_view
+      view:update()
+      test.equal(view.size.y, 0, "closed input must release its reserved rows")
+    end)
+  end
 
   test.test("centered command inputs keep their label and query visible at every row offset", function()
     session.grid:resize(80, 12)
