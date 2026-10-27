@@ -1,0 +1,16 @@
+{
+  "addons": [
+    {
+      "id": "tui",
+      "name": "Terminal UI",
+      "description": "Run Pragtical in a terminal with keyboard, mouse, and optional image previews.",
+      "version": "0.1",
+      "mod_version": "3.14.0",
+      "tags": [
+        "terminal",
+        "tui",
+        "text user interface"
+      ]
+    }
+  ]
+}
