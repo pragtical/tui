@@ -1,4 +1,4 @@
--- mod-version:3 --priority:-3
+-- mod-version:3.14 --priority:-3
 local core = require "core"
 local cli = require "core.cli"
 local common = require "core.common"
