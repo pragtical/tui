@@ -65,6 +65,9 @@ function audio_view.install()
       self.filter_due = nil
       self:filter_tracks()
     end
+    if self.filter_due and core.request_update then
+      core.request_update(self.filter_due - system.get_time())
+    end
     self.play_button.transport_shape = self.state == "playing" and "pause" or nil
     self.seek.enabled = self.voice ~= nil and self.duration ~= nil and self.duration > 0
     if not self.seek.dragging then
